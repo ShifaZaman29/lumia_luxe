@@ -1,11 +1,14 @@
 {
-  "name": "honeyed-bakery-backend",
+  "name": "lumia-luxe-backend",
   "version": "1.0.0",
-  "description": "Backend API for Honeyed Bakery E-commerce",
+  "description": "Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "keywords": [
     "bakery",

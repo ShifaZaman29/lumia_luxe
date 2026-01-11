@@ -1,6 +1,7 @@
 // lib/api.ts - API utility for connecting to backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+// FIXED: Changed port from 4001 to 4000 to match backend
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 // Helper function to get token from localStorage
 const getAuthToken = (): string | null => {
@@ -25,18 +26,26 @@ async function fetchAPI2(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Something went wrong');
+    if (!response.ok) {
+      throw new Error(data.message || 'Something went wrong');
+    }
+
+    return data;
+  } catch (error) {
+    // Better error handling
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error - please check if the backend server is running');
   }
-
-  return data;
 }
 
 // Auth API
@@ -94,39 +103,70 @@ export const productsAPI = {
   },
 };
 
+
+
 // Cart API
 export const cartAPI = {
+  // Get cart
   get: async () => {
-    return fetchAPI2('/cart');
+    try {
+      return await fetchAPI2('/cart');
+    } catch (error) {
+      console.error('Cart get error:', error);
+      return { success: false, message: 'Failed to fetch cart' };
+    }
   },
 
-  add: async (productId: string, quantity: number = 1, customization?: any) => {
-    return fetchAPI2('/cart', {
-      method: 'POST',
-      body: JSON.stringify({ productId, quantity, customization }),
-    });
+  // Add item to cart - FIXED method name and endpoint
+  addItem: async (productId: string, quantity: number = 1) => {
+    try {
+      return await fetchAPI2('/cart', {
+        method: 'POST',
+        body: JSON.stringify({ productId, quantity }),
+      });
+    } catch (error) {
+      console.error('Cart add error:', error);
+      return { success: false, message: 'Failed to add to cart' };
+    }
   },
 
+  // Update item quantity
   update: async (itemId: string, quantity: number) => {
-    return fetchAPI2(`/cart/${itemId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ quantity }),
-    });
+    try {
+      return await fetchAPI2(`/cart/${itemId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ quantity }),
+      });
+    } catch (error) {
+      console.error('Cart update error:', error);
+      return { success: false, message: 'Failed to update cart' };
+    }
   },
 
+  // Remove item from cart
   remove: async (itemId: string) => {
-    return fetchAPI2(`/cart/${itemId}`, {
-      method: 'DELETE',
-    });
+    try {
+      return await fetchAPI2(`/cart/${itemId}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Cart remove error:', error);
+      return { success: false, message: 'Failed to remove item' };
+    }
   },
 
+  // Clear cart
   clear: async () => {
-    return fetchAPI2('/cart', {
-      method: 'DELETE',
-    });
-  },
-};
-
+    try {
+      return await fetchAPI2('/cart', {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Cart clear error:', error);
+      return { success: false, message: 'Failed to clear cart' };
+    }
+  }
+}
 // Orders API
 export const ordersAPI = {
   create: async (orderData: {
@@ -252,7 +292,7 @@ export const adminAPI = {
     });
   },
 
-  // Products Management - ADDED THESE METHODS
+  // Products Management
   getAllProducts: async (params?: { 
     category?: string; 
     isActive?: boolean; 

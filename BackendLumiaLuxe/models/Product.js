@@ -1,9 +1,9 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Please provide a product name'],
+    required: [true, "Please provide a product name"],
     trim: true
   },
   slug: {
@@ -13,11 +13,11 @@ const productSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Please provide a product description']
+    required: [true, "Please provide a product description"]
   },
   price: {
     type: Number,
-    required: [true, 'Please provide a price'],
+    required: [true, "Please provide a price"],
     min: 0
   },
   compareAtPrice: {
@@ -26,8 +26,8 @@ const productSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    required: [true, 'Please provide a category'],
-    enum: ['rings', 'bracelets', 'earrings', 'handcuffs', 'pendants', 'chains', 'combosets']
+    required: [true, "Please provide a category"],
+    enum: ["rings", "bracelets", "earrings", "handcuffs", "pendants", "chains", "combosets"]
   },
   images: [{
     url: String,
@@ -41,18 +41,18 @@ const productSchema = new mongoose.Schema({
   },
   material: {
     type: String,
-    enum: ['gold', 'silver', 'platinum', 'rose-gold', 'white-gold', 'stainless-steel', 'brass', 'copper', 'mixed'],
-    required: [true, 'Please specify the material']
+    enum: ["gold", "silver", "platinum", "rose-gold", "white-gold", "stainless-steel", "brass", "copper", "mixed"],
+    required: [true, "Please specify the material"]
   },
   purity: {
     type: String,
-    enum: ['24k', '22k', '18k', '14k', '10k', '925-silver', 'not-applicable']
+    enum: ["24k", "22k", "18k", "14k", "10k", "925-silver", "not-applicable"]
   },
   gemstones: [{
     name: String,
     type: {
       type: String,
-      enum: ['diamond', 'ruby', 'emerald', 'sapphire', 'pearl', 'topaz', 'amethyst', 'other']
+      enum: ["diamond", "ruby", "emerald", "sapphire", "pearl", "topaz", "amethyst", "other"]
     },
     carats: Number
   }],
@@ -62,16 +62,16 @@ const productSchema = new mongoose.Schema({
     height: Number,
     unit: {
       type: String,
-      enum: ['mm', 'cm', 'inch'],
-      default: 'mm'
+      enum: ["mm", "cm", "inch"],
+      default: "mm"
     }
   },
   weight: {
     value: Number,
     unit: {
       type: String,
-      enum: ['g', 'mg', 'oz'],
-      default: 'g'
+      enum: ["g", "mg", "oz"],
+      default: "g"
     }
   },
   sizes: [{
@@ -90,12 +90,12 @@ const productSchema = new mongoose.Schema({
   },
   occasion: [{
     type: String,
-    enum: ['wedding', 'engagement', 'anniversary', 'birthday', 'casual', 'formal', 'party', 'everyday']
+    enum: ["wedding", "engagement", "anniversary", "birthday", "casual", "formal", "party", "everyday"]
   }],
   gender: {
     type: String,
-    enum: ['men', 'women', 'unisex'],
-    default: 'unisex'
+    enum: ["men", "women", "unisex"],
+    default: "unisex"
   },
   customizable: {
     type: Boolean,
@@ -116,13 +116,11 @@ const productSchema = new mongoose.Schema({
   reviews: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+      ref: "User"
     },
     name: String,
     rating: {
       type: Number,
-      required: true,
       min: 1,
       max: 5
     },
@@ -137,28 +135,16 @@ const productSchema = new mongoose.Schema({
 });
 
 // Create slug from name before saving
-productSchema.pre('save', function(next) {
-  if (this.isModified('name')) {
+productSchema.pre("save", function(next) {
+  if (this.isModified("name")) {
     this.slug = this.name
       .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/--+/g, '-')
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/--+/g, "-")
       .trim();
   }
   next();
 });
 
-// Update ratings when review is added
-productSchema.methods.updateRatings = function() {
-  if (this.reviews.length === 0) {
-    this.ratings.average = 0;
-    this.ratings.count = 0;
-  } else {
-    const sum = this.reviews.reduce((acc, review) => acc + review.rating, 0);
-    this.ratings.average = (sum / this.reviews.length).toFixed(1);
-    this.ratings.count = this.reviews.length;
-  }
-};
-
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.model("Product", productSchema);

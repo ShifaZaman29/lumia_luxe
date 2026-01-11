@@ -2,47 +2,86 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { useAuth } from "@/context/AuthContext"
+import { cartAPI } from "@/lib/api"
 
 export default function Navbar() {
   const [cartCount, setCartCount] = useState(0)
   const [user, setUser] = useState<{ name: string; email: string } | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const { user: authUser, logout } = useAuth()
 
   useEffect(() => {
-    // Update cart count
-    const cart = JSON.parse(localStorage.getItem("cart") || "[]")
-    const totalItems = cart.reduce((sum: number, item: any) => sum + item.quantity, 0)
-    setCartCount(totalItems)
+    // Sync auth user with local state
+    if (authUser) {
+      setUser({
+        name: authUser.name || 'User',
+        email: authUser.email || ''
+      })
+    } else {
+      setUser(null)
+    }
+  }, [authUser])
 
-    // Check user auth
-    const currentUser = localStorage.getItem("currentUser")
-    if (currentUser) {
-      setUser(JSON.parse(currentUser))
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      try {
+        // Check if user is authenticated (has token)
+        const token = localStorage.getItem('token')
+        
+        if (!token) {
+          setCartCount(0)
+          return
+        }
+
+        // Fetch cart count from API
+        const response = await cartAPI.get()
+        
+        if (response.success && response.data) {
+          const count = response.data.totalItems || 0
+          console.log("🛒 Navbar cart count:", count)
+          setCartCount(count)
+        } else {
+          setCartCount(0)
+        }
+      } catch (error) {
+        console.error("Error fetching cart count:", error)
+        setCartCount(0)
+      }
     }
 
-    // Listen for storage changes
-    const handleStorage = () => {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]")
-      const totalItems = cart.reduce((sum: number, item: any) => sum + item.quantity, 0)
-      setCartCount(totalItems)
+    fetchCartCount()
 
-      const currentUser = localStorage.getItem("currentUser")
-      setUser(currentUser ? JSON.parse(currentUser) : null)
+    // Listen for cart updates
+    const handleCartUpdate = () => {
+      fetchCartCount()
     }
 
-    window.addEventListener("storage", handleStorage)
-    window.addEventListener("cartUpdated", handleStorage)
+    window.addEventListener("cartUpdated", handleCartUpdate)
 
     return () => {
-      window.removeEventListener("storage", handleStorage)
-      window.removeEventListener("cartUpdated", handleStorage)
+      window.removeEventListener("cartUpdated", handleCartUpdate)
     }
   }, [])
 
   const handleLogout = () => {
+    // Clear all user data
     localStorage.removeItem("currentUser")
+    localStorage.removeItem("token")
+    
+    // Clear cart data
+    localStorage.removeItem("cart")
+    localStorage.removeItem("cartCount")
+    
+    // Call auth logout
+    logout()
+    
+    // Reset state
     setUser(null)
+    setCartCount(0)
     setShowUserMenu(false)
+    
+    // Optional: Show message
     alert("Logged out successfully!")
   }
 
@@ -114,6 +153,18 @@ export default function Navbar() {
                     <div className="block px-5 py-2.5 text-[#2D2B28] no-underline transition-all duration-300">
                       Hello, {user.name}
                     </div>
+                    <Link
+                      href="/profile"
+                      className="block px-5 py-2.5 text-[#2D2B28] no-underline transition-all duration-300 hover:bg-[#F9F6F2] hover:text-[#C0A060]"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/orders"
+                      className="block px-5 py-2.5 text-[#2D2B28] no-underline transition-all duration-300 hover:bg-[#F9F6F2] hover:text-[#C0A060]"
+                    >
+                      Orders
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-5 py-2.5 text-[#2D2B28] no-underline transition-all duration-300 hover:bg-[#F9F6F2] hover:text-[#C0A060]"
@@ -140,9 +191,14 @@ export default function Navbar() {
               </div>
             )}
           </div>
-          <span className="text-[#2D2B28] text-xl cursor-pointer transition-colors duration-300 hover:text-[#C0A060]">
+          
+          <Link
+            href="/wishlist"
+            className="text-[#2D2B28] text-xl cursor-pointer transition-colors duration-300 hover:text-[#C0A060] no-underline"
+          >
             ❤️
-          </span>
+          </Link>
+          
           <Link
             href="/cart"
             className="text-[#2D2B28] text-xl cursor-pointer transition-colors duration-300 hover:text-[#C0A060] relative no-underline"
@@ -150,7 +206,7 @@ export default function Navbar() {
             🛒
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-gradient-to-br from-[#D5B895] to-[#C0A060] text-white rounded-full w-[18px] h-[18px] text-[11px] flex items-center justify-center font-semibold">
-                {cartCount}
+                {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
           </Link>

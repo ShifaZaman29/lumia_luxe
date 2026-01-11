@@ -3,20 +3,13 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/nextjs"
+      "use": "@vercel/next"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ],
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://lumialuxe-production.up.railway.app/api"
-  },
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://lumialuxe-production.up.railway.app/api"
+  }
 }

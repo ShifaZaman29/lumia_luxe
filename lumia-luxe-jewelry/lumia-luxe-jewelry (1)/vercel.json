@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://lumialuxe-production.up.railway.app/api",
+    "MONGODB_URI": "@your-mongodb-env-variable"
+  }
+}

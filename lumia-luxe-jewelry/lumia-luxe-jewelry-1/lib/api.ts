@@ -1,7 +1,13 @@
-// lib/api.ts - API utility for connecting to backend
+// lib/api.ts - COMPLETE FIXED VERSION
 
-// FIXED: Changed port from 4001 to 4000 to match backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// ✅ CRITICAL FIX: Railway URL + /api prefix
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://lumialuxe-production-19d4.up.railway.app') + '/api';
+
+// Debug log
+if (typeof window !== 'undefined') {
+  console.log('🔧 API Base URL:', API_BASE_URL);
+  console.log('🔧 Environment API URL:', process.env.NEXT_PUBLIC_API_URL);
+}
 
 // Helper function to get token from localStorage
 const getAuthToken = (): string | null => {
@@ -12,13 +18,12 @@ const getAuthToken = (): string | null => {
 };
 
 // Generic fetch wrapper with auth
-async function fetchAPI2(
+async function fetchAPI(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<any> {
   const token = getAuthToken();
   
-  // Create Headers object
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   
@@ -26,21 +31,34 @@ async function fetchAPI2(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const url = `${API_BASE_URL}${endpoint}`;
+  console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(url, {
       ...options,
       headers,
+      credentials: 'include', // Important for cookies
     });
+
+    // Handle non-JSON responses
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new Error(`Expected JSON but got: ${contentType}`);
+    }
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      console.error(`❌ API Error (${response.status}):`, data);
+      throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
     }
 
+    console.log(`✅ API Success (${response.status}):`, data);
     return data;
   } catch (error) {
-    // Better error handling
+    console.error('❌ Network/API error:', error);
     if (error instanceof Error) {
       throw error;
     }
@@ -48,28 +66,38 @@ async function fetchAPI2(
   }
 }
 
-// Auth API
+// ==================== AUTH API ====================
 export const authAPI = {
   register: async (name: string, email: string, password: string) => {
-    return fetchAPI2('/auth/register', {
+    console.log('📝 Register attempt:', { name, email });
+    return fetchAPI('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     });
   },
 
   login: async (email: string, password: string) => {
-    return fetchAPI2('/auth/login', {
+    console.log('🔐 Login attempt:', { email });
+    return fetchAPI('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
   },
 
   getMe: async () => {
-    return fetchAPI2('/auth/me');
+    return fetchAPI('/auth/me');
   },
+
+  logout: async () => {
+    // Clear local token
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
+    return { success: true, message: 'Logged out' };
+  }
 };
 
-// Products API
+// ==================== PRODUCTS API ====================
 export const productsAPI = {
   getAll: async (params?: {
     category?: string;
@@ -88,39 +116,43 @@ export const productsAPI = {
       });
     }
     const query = queryParams.toString();
-    return fetchAPI2(`/products${query ? `?${query}` : ''}`);
+    return fetchAPI(`/products${query ? `?${query}` : ''}`);
   },
 
   getById: async (id: string) => {
-    return fetchAPI2(`/products/${id}`);
+    return fetchAPI(`/products/${id}`);
+  },
+
+  getBySlug: async (slug: string) => {
+    return fetchAPI(`/products/slug/${slug}`);
   },
 
   addReview: async (productId: string, rating: number, comment: string) => {
-    return fetchAPI2(`/products/${productId}/reviews`, {
+    return fetchAPI(`/products/${productId}/reviews`, {
       method: 'POST',
       body: JSON.stringify({ rating, comment }),
     });
   },
+
+  getCategories: async () => {
+    return fetchAPI('/products/categories');
+  }
 };
 
-
-
-// Cart API
+// ==================== CART API ====================
 export const cartAPI = {
-  // Get cart
-  get: async () => {
+  getCart: async () => {
     try {
-      return await fetchAPI2('/cart');
+      return await fetchAPI('/cart');
     } catch (error) {
       console.error('Cart get error:', error);
-      return { success: false, message: 'Failed to fetch cart' };
+      return { success: false, message: 'Failed to fetch cart', cart: [] };
     }
   },
 
-  // Add item to cart - FIXED method name and endpoint
   addItem: async (productId: string, quantity: number = 1) => {
     try {
-      return await fetchAPI2('/cart', {
+      return await fetchAPI('/cart/items', {
         method: 'POST',
         body: JSON.stringify({ productId, quantity }),
       });
@@ -130,44 +162,52 @@ export const cartAPI = {
     }
   },
 
-  // Update item quantity
-  update: async (itemId: string, quantity: number) => {
+  updateItem: async (itemId: string, quantity: number) => {
     try {
-      return await fetchAPI2(`/cart/${itemId}`, {
+      return await fetchAPI(`/cart/items/${itemId}`, {
         method: 'PUT',
         body: JSON.stringify({ quantity }),
       });
     } catch (error) {
       console.error('Cart update error:', error);
-      return { success: false, message: 'Failed to update cart' };
+      return { success: false, message: 'Failed to update cart item' };
     }
   },
 
-  // Remove item from cart
-  remove: async (itemId: string) => {
+  removeItem: async (itemId: string) => {
     try {
-      return await fetchAPI2(`/cart/${itemId}`, {
+      return await fetchAPI(`/cart/items/${itemId}`, {
         method: 'DELETE',
       });
     } catch (error) {
       console.error('Cart remove error:', error);
-      return { success: false, message: 'Failed to remove item' };
+      return { success: false, message: 'Failed to remove item from cart' };
     }
   },
 
-  // Clear cart
-  clear: async () => {
+  clearCart: async () => {
     try {
-      return await fetchAPI2('/cart', {
+      return await fetchAPI('/cart/clear', {
         method: 'DELETE',
       });
     } catch (error) {
       console.error('Cart clear error:', error);
       return { success: false, message: 'Failed to clear cart' };
     }
+  },
+
+  getCartCount: async () => {
+    try {
+      const response = await fetchAPI('/cart/count');
+      return response;
+    } catch (error) {
+      console.error('Cart count error:', error);
+      return { success: false, count: 0 };
+    }
   }
-}
-// Orders API
+};
+
+// ==================== ORDERS API ====================
 export const ordersAPI = {
   create: async (orderData: {
     shippingAddress: {
@@ -182,32 +222,36 @@ export const ordersAPI = {
     paymentMethod: 'cash' | 'card' | 'online';
     notes?: string;
   }) => {
-    return fetchAPI2('/orders', {
+    return fetchAPI('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
   },
 
   getMyOrders: async () => {
-    return fetchAPI2('/orders');
+    return fetchAPI('/orders/my-orders');
   },
 
   getById: async (id: string) => {
-    return fetchAPI2(`/orders/${id}`);
+    return fetchAPI(`/orders/${id}`);
   },
 
   cancel: async (id: string, reason: string) => {
-    return fetchAPI2(`/orders/${id}/cancel`, {
+    return fetchAPI(`/orders/${id}/cancel`, {
       method: 'PUT',
       body: JSON.stringify({ reason }),
     });
   },
+
+  getOrderStatus: async (id: string) => {
+    return fetchAPI(`/orders/${id}/status`);
+  }
 };
 
-// User API
+// ==================== USER API ====================
 export const userAPI = {
   getProfile: async () => {
-    return fetchAPI2('/users/profile');
+    return fetchAPI('/users/profile');
   },
 
   updateProfile: async (data: {
@@ -216,44 +260,53 @@ export const userAPI = {
     phone?: string;
     address?: any;
   }) => {
-    return fetchAPI2('/users/profile', {
+    return fetchAPI('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   },
 
   updatePassword: async (currentPassword: string, newPassword: string) => {
-    return fetchAPI2('/users/password', {
+    return fetchAPI('/users/password', {
       method: 'PUT',
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   },
 
   getWishlist: async () => {
-    return fetchAPI2('/users/wishlist');
+    return fetchAPI('/users/wishlist');
   },
 
   addToWishlist: async (productId: string) => {
-    return fetchAPI2(`/users/wishlist/${productId}`, {
+    return fetchAPI(`/users/wishlist/${productId}`, {
       method: 'POST',
     });
   },
 
   removeFromWishlist: async (productId: string) => {
-    return fetchAPI2(`/users/wishlist/${productId}`, {
+    return fetchAPI(`/users/wishlist/${productId}`, {
       method: 'DELETE',
     });
   },
-};
 
-// Admin API
-export const adminAPI = {
-  // Dashboard Stats
-  getDashboardStats: async () => {
-    return fetchAPI2('/admin/stats');
+  getAddresses: async () => {
+    return fetchAPI('/users/addresses');
   },
 
-  // Orders Management
+  addAddress: async (address: any) => {
+    return fetchAPI('/users/addresses', {
+      method: 'POST',
+      body: JSON.stringify(address),
+    });
+  }
+};
+
+// ==================== ADMIN API ====================
+export const adminAPI = {
+  getDashboardStats: async () => {
+    return fetchAPI('/admin/stats');
+  },
+
   getAllOrders: async (params?: { status?: string; page?: number; limit?: number }) => {
     const queryParams = new URLSearchParams();
     if (params) {
@@ -264,35 +317,33 @@ export const adminAPI = {
       });
     }
     const query = queryParams.toString();
-    return fetchAPI2(`/admin/orders${query ? `?${query}` : ''}`);
+    return fetchAPI(`/admin/orders${query ? `?${query}` : ''}`);
   },
 
   updateOrderStatus: async (orderId: string, status: string, note?: string) => {
-    return fetchAPI2(`/admin/orders/${orderId}/status`, {
+    return fetchAPI(`/admin/orders/${orderId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status, note }),
     });
   },
 
-  // Users Management
   getAllUsers: async () => {
-    return fetchAPI2('/admin/users');
+    return fetchAPI('/admin/users');
   },
 
   updateUserRole: async (userId: string, role: string) => {
-    return fetchAPI2(`/admin/users/${userId}/role`, {
+    return fetchAPI(`/admin/users/${userId}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role }),
     });
   },
 
   deleteUser: async (userId: string) => {
-    return fetchAPI2(`/admin/users/${userId}`, {
+    return fetchAPI(`/admin/users/${userId}`, {
       method: 'DELETE',
     });
   },
 
-  // Products Management
   getAllProducts: async (params?: { 
     category?: string; 
     isActive?: boolean; 
@@ -308,7 +359,7 @@ export const adminAPI = {
       });
     }
     const query = queryParams.toString();
-    return fetchAPI2(`/admin/products${query ? `?${query}` : ''}`);
+    return fetchAPI(`/admin/products${query ? `?${query}` : ''}`);
   },
 
   createProduct: async (productData: {
@@ -320,30 +371,43 @@ export const adminAPI = {
     stock: number;
     isActive?: boolean;
   }) => {
-    return fetchAPI2('/admin/products', {
+    return fetchAPI('/admin/products', {
       method: 'POST',
       body: JSON.stringify(productData),
     });
   },
 
   updateProduct: async (productId: string, productData: any) => {
-    return fetchAPI2(`/admin/products/${productId}`, {
+    return fetchAPI(`/admin/products/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(productData),
     });
   },
 
   deleteProduct: async (productId: string) => {
-    return fetchAPI2(`/admin/products/${productId}`, {
+    return fetchAPI(`/admin/products/${productId}`, {
       method: 'DELETE',
     });
   },
 
   getProductById: async (productId: string) => {
-    return fetchAPI2(`/admin/products/${productId}`);
-  },
+    return fetchAPI(`/admin/products/${productId}`);
+  }
 };
 
+// ==================== HEALTH CHECK ====================
+export const healthAPI = {
+  check: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+      return response.json();
+    } catch (error) {
+      return { status: 'ERROR', message: 'Backend not reachable' };
+    }
+  }
+};
+
+// ==================== EXPORT ALL ====================
 export default {
   auth: authAPI,
   products: productsAPI,
@@ -351,4 +415,25 @@ export default {
   orders: ordersAPI,
   user: userAPI,
   admin: adminAPI,
+  health: healthAPI,
+};
+
+// Utility for direct testing
+export const testConnection = async () => {
+  console.log('🧪 Testing API connection...');
+  console.log('API Base URL:', API_BASE_URL);
+  
+  try {
+    const health = await healthAPI.check();
+    console.log('Health check:', health);
+    
+    // Test products endpoint
+    const products = await productsAPI.getAll({ limit: 1 });
+    console.log('Products test:', products);
+    
+    return { success: true, health, products };
+  } catch (error) {
+    console.error('Connection test failed:', error);
+    return { success: false, error: error.message };
+  }
 };

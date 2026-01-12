@@ -5,22 +5,30 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'lumialuxe-production-19d4.up.railway.app',
-        pathname: '/uploads/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.vercel.app',
+        pathname: '/**',
+      }
     ],
-    unoptimized: true, // Add this if you have image optimization issues
+    // If you have image optimization issues, set to true
+    unoptimized: false,
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporarily ignore ESLint errors
+    ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true, // Temporarily ignore TypeScript errors
-  }
+    ignoreBuildErrors: true,
+  },
+  reactStrictMode: true,
+  swcMinify: true,
 }
 
 module.exports = nextConfig

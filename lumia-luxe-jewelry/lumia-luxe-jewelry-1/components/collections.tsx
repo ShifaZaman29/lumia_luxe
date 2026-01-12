@@ -1,9 +1,24 @@
+"use client"
+
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 
-const collections = [
+// Define types
+interface Collection {
+  name: string
+  type: string
+  image: string
+  href: string
+}
+
+interface ImageErrors {
+  [key: string]: boolean
+}
+
+const collections: Collection[] = [
   {
-    name: "Rings ",
+    name: "Rings",
     type: "rings",
     image: "https://img.drz.lazcdn.com/static/pk/p/10b1d6394fbc65f938bdea4b65176140.jpg_960x960q80.jpg_.webp",
     href: "/collections/rings"
@@ -21,13 +36,13 @@ const collections = [
     href: "/collections/bracelets"
   },
   {
-    name: "Pendants ",
+    name: "Pendants",
     type: "pendants",
     image: "https://timelesssparkling.in/cdn/shop/files/IMG_4208.jpg?v=1749874438&width=1946",
     href: "#shop"
   },
   {
-    name: "Earrings ",
+    name: "Earrings",
     type: "earrings",
     image: "https://m.media-amazon.com/images/I/51+Y+wKSdYL._AC_UY1100_.jpg",
     href: "#shop"
@@ -39,7 +54,7 @@ const collections = [
     href: "#shop"
   },
   { 
-    name: "Combo Sets ", 
+    name: "Combo Sets", 
     type: "combo", 
     image: "https://robinsonsjewelers.com/cdn/shop/articles/how-to-maintain-the-shine-of-gold-jewelry_6103416707716641383_20241218.jpg?v=1736584579&width=600",
     href: "#shop"
@@ -47,6 +62,12 @@ const collections = [
 ]
 
 export default function Collections() {
+  const [imageErrors, setImageErrors] = useState<ImageErrors>({})
+
+  const handleImageError = (type: string) => {
+    setImageErrors(prev => ({ ...prev, [type]: true }))
+  }
+
   return (
     <section id="collections" className="py-24 px-[5%] bg-white">
       <h2 className="font-serif text-5xl text-center mb-16 text-[#2D2B28]">Shop by Collection</h2>
@@ -58,13 +79,22 @@ export default function Collections() {
             className="block group"
           >
             <div className="relative overflow-hidden rounded-2xl cursor-pointer h-[350px] border border-[#D5B895] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_12px_30px_rgba(213,184,149,0.25)]">
-              <Image
-                src={collection.image}
-                alt={collection.name}
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-110"
-                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 25vw, 25vw"
-              />
+              {/* Fallback for broken images */}
+              {imageErrors[collection.type] ? (
+                <div className="absolute inset-0 bg-gradient-to-br from-[#F9F6F2] to-[#D5B895] flex items-center justify-center">
+                  <span className="text-[#2D2B28] font-serif text-xl">{collection.name}</span>
+                </div>
+              ) : (
+                <Image
+                  src={collection.image}
+                  alt={collection.name}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 25vw, 25vw"
+                  onError={() => handleImageError(collection.type)}
+                  unoptimized={true}
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
                 <h3 className="font-serif text-3xl mb-2">{collection.name}</h3>

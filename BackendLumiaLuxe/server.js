@@ -29,10 +29,14 @@ app.set('trust proxy', 1);
 /* =======================
    CORS Configuration
 ======================= */
+// Replace your allowedOrigins array with:
 const allowedOrigins = [
-  'https://v0-lumialuxejewelry1.vercel.app',
+  'https://v0-lumialuxejewelry1.vercel.app',  // Your Vercel URL
+  'https://lumia-luxe-jewelry.vercel.app',    // Your other Vercel URL
   'http://localhost:3000',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  'https://*.vercel.app',  // Allow all Vercel previews
+  'https://v0-lumialuxejewelry1-git-',  // Allow Vercel preview branches
 ];
 
 const corsOptions = {

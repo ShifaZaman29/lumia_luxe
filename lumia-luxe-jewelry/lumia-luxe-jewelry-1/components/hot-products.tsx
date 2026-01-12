@@ -38,23 +38,101 @@ export default function HotProducts() {
 
   const fetchProducts = async () => {
     try {
-      // Fetch featured products from your API
-      const response = await productsAPI.getAll({
-        featured: true,
-        limit: 8
+      console.log("🔄 Fetching hot products...")
+      
+      // Use Railway URL directly for now to test
+      const RAILWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'https://lumialuxe-production-19d4.up.railway.app'
+      
+      // Fetch directly from Railway backend
+      const response = await fetch(`${RAILWAY_URL}/api/products?featured=true&limit=8`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-cache'
       })
-
-      if (response.success && response.data) {
-        setProducts(response.data)
+      
+      console.log("📦 Response status:", response.status)
+      const data = await response.json()
+      console.log("📦 Products data:", data)
+      
+      if (response.ok && data.success) {
+        setProducts(data.data || data.products || [])
       } else {
-        console.log("No products found in API")
+        console.error("Failed to fetch products:", data)
+        // Use fallback mock data
+        setProducts(getFallbackProducts())
       }
     } catch (error) {
-      console.error("Error fetching products:", error)
+      console.error("❌ Error fetching products:", error)
+      // Use fallback mock data
+      setProducts(getFallbackProducts())
     } finally {
       setLoading(false)
     }
   }
+
+  // Fallback mock products in case API fails
+  const getFallbackProducts = (): Product[] => [
+    {
+      _id: "1",
+      name: "Gold Diamond Ring",
+      slug: "gold-diamond-ring",
+      price: 12999,
+      compareAtPrice: 15999,
+      images: [{ url: "/placeholder.svg", alt: "Gold Diamond Ring" }],
+      category: "rings",
+      stock: 10,
+      featured: true,
+      ratings: { average: 4.5, count: 24 }
+    },
+    {
+      _id: "2",
+      name: "Silver Pearl Necklace",
+      slug: "silver-pearl-necklace",
+      price: 8999,
+      compareAtPrice: 11999,
+      images: [{ url: "/placeholder.svg", alt: "Silver Pearl Necklace" }],
+      category: "necklaces",
+      stock: 8,
+      featured: true,
+      ratings: { average: 4.7, count: 32 }
+    },
+    {
+      _id: "3",
+      name: "Rose Gold Earrings",
+      slug: "rose-gold-earrings",
+      price: 4999,
+      compareAtPrice: 6999,
+      images: [{ url: "/placeholder.svg", alt: "Rose Gold Earrings" }],
+      category: "earrings",
+      stock: 15,
+      featured: true,
+      ratings: { average: 4.3, count: 18 }
+    },
+    {
+      _id: "4",
+      name: "Platinum Wedding Band",
+      slug: "platinum-wedding-band",
+      price: 18999,
+      compareAtPrice: 22999,
+      images: [{ url: "/placeholder.svg", alt: "Platinum Wedding Band" }],
+      category: "rings",
+      stock: 5,
+      featured: true,
+      ratings: { average: 4.8, count: 12 }
+    },
+    {
+      _id: "5",
+      name: "Diamond Tennis Bracelet",
+      slug: "diamond-tennis-bracelet",
+      price: 24999,
+      images: [{ url: "/placeholder.svg", alt: "Diamond Tennis Bracelet" }],
+      category: "bracelets",
+      stock: 3,
+      featured: true,
+      ratings: { average: 4.9, count: 9 }
+    }
+  ]
 
   const handleAddToCart = async (e: React.MouseEvent, productId: string) => {
     e.preventDefault()
@@ -86,16 +164,26 @@ export default function HotProducts() {
     setAddingToCart(productId)
 
     try {
-      // IMPORTANT: Check what endpoint your backend expects
-      // Based on your cart.js file, it should be POST to /cart with productId
       console.log("🛒 Attempting to add product:", productId)
       
-      // Try this first - based on your cart.js routes
-      const response = await cartAPI.addItem(productId, 1)
+      // Get token from localStorage safely
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       
-      console.log("🛒 Add to cart response:", response)
+      const RAILWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'https://lumialuxe-production-19d4.up.railway.app'
       
-      if (response.success) {
+      const response = await fetch(`${RAILWAY_URL}/api/cart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({ productId, quantity: 1 })
+      })
+      
+      const data = await response.json()
+      console.log("🛒 Add to cart response:", data)
+      
+      if (response.ok) {
         setToastMessage("✅ Added to Cart!")
         setShowToast(true)
         setTimeout(() => setShowToast(false), 3000)
@@ -103,36 +191,9 @@ export default function HotProducts() {
         // Dispatch cart updated event
         window.dispatchEvent(new Event("cartUpdated"))
       } else {
-        // If that fails, try the alternative endpoint
-        console.log("🛒 First attempt failed, trying alternative...")
-        try {
-          // Some APIs use different endpoint structure
-          const altResponse = await fetch('http://localhost:4000/api/cart', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ productId, quantity: 1 })
-          })
-          const altData = await altResponse.json()
-          console.log("🛒 Alternative response:", altData)
-          
-          if (altResponse.ok) {
-            setToastMessage("✅ Added to Cart!")
-            setShowToast(true)
-            setTimeout(() => setShowToast(false), 3000)
-            window.dispatchEvent(new Event("cartUpdated"))
-          } else {
-            setToastMessage(altData.message || "Failed to add to cart")
-            setShowToast(true)
-            setTimeout(() => setShowToast(false), 3000)
-          }
-        } catch (altError: any) {
-          setToastMessage(response.message || altError.message || "Failed to add to cart")
-          setShowToast(true)
-          setTimeout(() => setShowToast(false), 3000)
-        }
+        setToastMessage(data.message || "Failed to add to cart")
+        setShowToast(true)
+        setTimeout(() => setShowToast(false), 3000)
       }
     } catch (error: any) {
       console.error("❌ Error adding to cart:", error)
@@ -198,6 +259,7 @@ export default function HotProducts() {
                     fill
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
                     sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    unoptimized // Added for external images
                   />
                   
                   {product.compareAtPrice && product.compareAtPrice > product.price && (

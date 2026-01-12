@@ -1,7 +1,7 @@
 // lib/api.ts - API utility for connecting to backend
 
 // FIXED: Changed port from 4001 to 4000 to match backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // Helper function to get token from localStorage
 const getAuthToken = (): string | null => {

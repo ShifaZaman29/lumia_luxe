@@ -29,20 +29,18 @@ app.set('trust proxy', 1);
 /* =======================
    CORS Configuration
 ======================= */
-// Replace your allowedOrigins array with:
 const allowedOrigins = [
-  'https://v0-lumialuxejewelry1.vercel.app',  // Your Vercel URL
-  'https://lumia-luxe-jewelry.vercel.app',    // Your other Vercel URL
+  'https://v0-lumialuxejewelry1.vercel.app',
+  'https://lumia-luxe-jewelry.vercel.app',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'https://*.vercel.app',  // Allow all Vercel previews
-  'https://v0-lumialuxejewelry1-git-',  // Allow Vercel preview branches
+  'https://*.vercel.app',
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // mobile apps, curl, etc.
-    if (!isProduction) return callback(null, true); // allow all in dev
+    if (!origin) return callback(null, true);
+    if (!isProduction) return callback(null, true);
     if (allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
       callback(null, true);
     } else {
@@ -87,6 +85,39 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads', express.static(uploadsDir));
 
 /* =======================
+   BASIC ROUTES (Always available)
+======================= */
+// Health check (always available)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Lumia Luxe API is running',
+    timestamp: new Date(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
+// Test route
+app.post('/api/test-auth', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Test auth route is working',
+    timestamp: new Date()
+  });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: '🎉 Lumia Luxe E-commerce API',
+    version: '1.0.0',
+    status: 'operational',
+    health: '/api/health',
+    test_auth: 'POST /api/test-auth'
+  });
+});
+
+/* =======================
    MongoDB Connection
 ======================= */
 const connectDB = async () => {
@@ -98,85 +129,57 @@ const connectDB = async () => {
     }
 
     console.log('🔌 Connecting to MongoDB...');
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-    });
+    await mongoose.connect(mongoURI);
     console.log('✅ MongoDB connected successfully');
-    console.log(`📊 Database: ${mongoose.connection.db?.databaseName || 'Unknown'}`);
+    
+    // NOW load main routes after DB is connected
+    loadMainRoutes();
+    
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     console.log('🔄 Retrying connection in 5 seconds...');
     setTimeout(connectDB, 5000);
   }
 };
-connectDB();
+
+// Function to load main routes AFTER DB connects
+const loadMainRoutes = () => {
+  console.log('🔄 Loading main application routes...');
+  
+  try {
+    // Test if route files exist
+    console.log('📁 Checking route files...');
+    
+    const routes = [
+      { path: './routes/auth', name: 'auth' },
+      { path: './routes/products', name: 'products' },
+      { path: './routes/cart', name: 'cart' },
+      { path: './routes/orders', name: 'orders' },
+      { path: './routes/users', name: 'users' },
+      { path: './routes/admin', name: 'admin' }
+    ];
+    
+    routes.forEach(route => {
+      try {
+        const routeModule = require(route.path);
+        app.use(`/api/${route.name}`, routeModule);
+        console.log(`✅ ${route.name} routes loaded`);
+      } catch (err) {
+        console.error(`❌ Failed to load ${route.name} routes:`, err.message);
+      }
+    });
+    
+    console.log('✅ Main routes loaded successfully');
+    
+  } catch (err) {
+    console.error('❌ Critical error loading routes:', err);
+  }
+};
 
 // MongoDB events
 mongoose.connection.on('connected', () => console.log('✅ Mongoose connected to MongoDB'));
 mongoose.connection.on('error', (err) => console.error('❌ Mongoose connection error:', err.message));
 mongoose.connection.on('disconnected', () => console.warn('⚠️ Mongoose disconnected'));
-
-/* =======================
-   Routes
-======================= */
-try {
-  const authRoutes = require('./routes/auth');
-  const productRoutes = require('./routes/products');
-  const cartRoutes = require('./routes/cart');
-  const orderRoutes = require('./routes/orders');
-  const userRoutes = require('./routes/users');
-  const adminRoutes = require('./routes/admin');
-
-  app.use('/api/auth', authRoutes);
-  app.use('/api/products', productRoutes);
-  app.use('/api/cart', cartRoutes);
-  app.use('/api/orders', orderRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/admin', adminRoutes);
-
-  console.log('✅ All API routes loaded');
-} catch (err) {
-  console.error('❌ Error loading routes:', err);
-}
-
-/* =======================
-   Health Check
-======================= */
-app.get('/api/health', (req, res) => {
-  const health = {
-    status: 'OK',
-    message: 'Lumia Luxe API is running',
-    timestamp: new Date(),
-    uptime: process.uptime(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    environment: process.env.NODE_ENV || 'development',
-    frontend: process.env.FRONTEND_URL || 'Not set',
-    version: '1.0.0'
-  };
-  res.json(health);
-});
-
-app.get('/', (req, res) => {
-  res.json({
-    message: '🎉 Lumia Luxe E-commerce API',
-    version: '1.0.0',
-    status: 'operational',
-    endpoints: {
-      docs: 'Coming soon',
-      health: '/api/health',
-      auth: '/api/auth',
-      products: '/api/products',
-      cart: '/api/cart',
-      orders: '/api/orders',
-      users: '/api/users',
-      admin: '/api/admin'
-    },
-    frontend: 'https://v0-lumialuxejewelry1.vercel.app'
-  });
-});
 
 /* =======================
    404 Handler
@@ -187,12 +190,9 @@ app.use('*', (req, res) => {
     message: `Route ${req.originalUrl} not found`,
     availableRoutes: [
       '/api/health',
-      '/api/auth',
-      '/api/products',
-      '/api/cart',
-      '/api/orders',
-      '/api/users',
-      '/api/admin'
+      '/api/test-auth',
+      '/api/auth/register',
+      '/api/auth/login'
     ]
   });
 });
@@ -205,26 +205,33 @@ app.use(errorHandler);
 /* =======================
    Start Server
 ======================= */
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🌐 Health check: https://lumialuxe-production-19d4.up.railway.app/api/health`);
-  console.log(`🔗 Frontend: https://v0-lumialuxejewelry1.vercel.app`);
-  console.log(`📁 Uploads: https://lumialuxe-production-19d4.up.railway.app/uploads`);
-  console.log(`📊 Database: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected'}`);
-});
-
-/* =======================
-   Graceful Shutdown
-======================= */
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Promise Rejection:', err);
-  server.close(() => process.exit(1));
-});
-
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
+const startServer = () => {
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🌐 Health: http://localhost:${PORT}/api/health`);
+    console.log(`🔗 Frontend: https://v0-lumialuxejewelry1.vercel.app`);
+    console.log(`📊 Database: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected'}`);
   });
-});
+
+  /* =======================
+     Graceful Shutdown
+  ======================= */
+  process.on('unhandledRejection', (err) => {
+    console.error('❌ Unhandled Promise Rejection:', err);
+    server.close(() => process.exit(1));
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received. Shutting down gracefully...');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+};
+
+// Start DB connection, then server
+connectDB();
+
+// Start server immediately for basic routes
+startServer();

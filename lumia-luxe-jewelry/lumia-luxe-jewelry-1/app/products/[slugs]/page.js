@@ -27,15 +27,12 @@ export default function ProductDetailPage() {
       setLoading(true)
       console.log("🔄 Fetching product:", params.slug)
       
-      // Try two ways to get product
       let response
       
       try {
-        // First try by slug
         response = await productsAPI.getBySlug(params.slug)
       } catch (error) {
         console.log("⚠️ Couldn't fetch by slug, trying alternative...")
-        // If that fails, get all products and find by slug
         const productsResponse = await productsAPI.getAll({ limit: 100 })
         const foundProduct = productsResponse.data?.find(p => p.slug === params.slug)
         if (foundProduct) {
@@ -80,12 +77,11 @@ export default function ProductDetailPage() {
       
       if (response.success) {
         alert("✅ Added to cart successfully!")
-        // Dispatch event to update cart count in navbar
         window.dispatchEvent(new Event("cartUpdated"))
       } else {
         alert(response.message || "Failed to add to cart")
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Error adding to cart:", error)
       alert(error.message || "Failed to add to cart")
     } finally {
@@ -93,6 +89,7 @@ export default function ProductDetailPage() {
     }
   }
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F9F6F2] pt-32 pb-16 px-[5%] flex items-center justify-center">
@@ -104,6 +101,7 @@ export default function ProductDetailPage() {
     )
   }
 
+  // Product not found
   if (!product) {
     return (
       <div className="min-h-screen bg-[#F9F6F2] pt-32 pb-16 px-[5%]">
@@ -121,6 +119,7 @@ export default function ProductDetailPage() {
     )
   }
 
+  // Main product display
   return (
     <div className="min-h-screen bg-[#F9F6F2] pt-32 pb-16 px-[5%]">
       <div className="max-w-6xl mx-auto">
@@ -151,31 +150,6 @@ export default function ProductDetailPage() {
                 />
               </div>
             </div>
-
-            {/* Thumbnail Images */}
-            {product.images && product.images.length > 1 && (
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {product.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden ${
-                      selectedImageIndex === index 
-                        ? "border-[#C0A060]" 
-                        : "border-transparent"
-                    }`}
-                  >
-                    <Image
-                      src={image.url || "/placeholder.svg"}
-                      alt={image.alt || `${product.name} thumbnail ${index + 1}`}
-                      width={80}
-                      height={80}
-                      className="object-cover w-full h-full"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Product Details */}
@@ -184,39 +158,15 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
             
-            {/* Rating */}
-            {product.ratings && (
-              <div className="flex items-center gap-2 mb-6">
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <span
-                      key={i}
-                      className={i < Math.round(product.ratings.average) ? "text-[#C0A060]" : "text-gray-300"}
-                    >
-                      ★
-                    </span>
-                  ))}
-                </div>
-                <span className="text-[#6F6B68]">
-                  {product.ratings.average} ({product.ratings.count} reviews)
-                </span>
-              </div>
-            )}
-
             {/* Price */}
             <div className="flex items-center gap-4 mb-6">
               <span className="text-3xl font-semibold text-[#C0A060]">
                 Rs. {product.price?.toLocaleString()}
               </span>
               {product.compareAtPrice && product.compareAtPrice > product.price && (
-                <>
-                  <span className="text-xl text-gray-500 line-through">
-                    Rs. {product.compareAtPrice?.toLocaleString()}
-                  </span>
-                  <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
-                    Save Rs. {(product.compareAtPrice - product.price).toLocaleString()}
-                  </span>
-                </>
+                <span className="text-xl text-gray-500 line-through">
+                  Rs. {product.compareAtPrice?.toLocaleString()}
+                </span>
               )}
             </div>
 
@@ -251,14 +201,10 @@ export default function ProductDetailPage() {
                   <p className="text-sm text-gray-500">Category</p>
                   <p className="font-medium capitalize">{product.category?.replace('-', ' ')}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Material</p>
-                  <p className="font-medium capitalize">{product.material?.replace('-', ' ')}</p>
-                </div>
-                {product.purity && (
+                {product.material && (
                   <div>
-                    <p className="text-sm text-gray-500">Purity</p>
-                    <p className="font-medium">{product.purity}</p>
+                    <p className="text-sm text-gray-500">Material</p>
+                    <p className="font-medium capitalize">{product.material?.replace('-', ' ')}</p>
                   </div>
                 )}
                 {product.weight && (
@@ -279,7 +225,7 @@ export default function ProductDetailPage() {
                     <button
                       onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
                       disabled={quantity <= 1}
-                      className="px-4 py-2 hover:bg-[#F9F6F2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 hover:bg-[#F9F6F2] transition-colors disabled:opacity-50"
                     >
                       -
                     </button>
@@ -287,76 +233,32 @@ export default function ProductDetailPage() {
                     <button
                       onClick={() => setQuantity(prev => Math.min(product.stock, prev + 1))}
                       disabled={quantity >= product.stock}
-                      className="px-4 py-2 hover:bg-[#F9F6F2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 hover:bg-[#F9F6F2] transition-colors disabled:opacity-50"
                     >
                       +
                     </button>
                   </div>
-                  <span className="text-sm text-gray-500">
-                    Max: {product.stock} available
-                  </span>
                 </div>
 
                 <button
                   onClick={handleAddToCart}
                   disabled={addingToCart}
-                  className="w-full bg-gradient-to-br from-[#D5B895] to-[#C0A060] text-white px-8 py-4 rounded-full font-semibold text-lg hover:scale-105 hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-gradient-to-br from-[#D5B895] to-[#C0A060] text-white px-8 py-4 rounded-full font-semibold text-lg hover:scale-105 transition-all disabled:opacity-50"
                 >
-                  {addingToCart ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></span>
-                      Adding to Cart...
-                    </span>
-                  ) : (
-                    "Add to Cart"
-                  )}
-                </button>
-
-                <button
-                  onClick={() => {
-                    // Add wishlist functionality here
-                    alert("Wishlist functionality coming soon!")
-                  }}
-                  className="w-full border-2 border-[#D5B895] text-[#2D2B28] px-8 py-4 rounded-full font-semibold text-lg hover:bg-[#F9F6F2] transition-all"
-                >
-                  Add to Wishlist
+                  {addingToCart ? "Adding to Cart..." : "Add to Cart"}
                 </button>
               </div>
             ) : (
               <div className="text-center p-8 border-2 border-red-200 rounded-2xl bg-red-50">
                 <p className="text-red-700 font-semibold text-lg mb-4">This product is currently out of stock</p>
                 <button
-                  onClick={() => {
-                    // Notify when back in stock functionality
-                    alert("We'll notify you when this product is back in stock!")
-                  }}
+                  onClick={() => alert("We'll notify you when this product is back in stock!")}
                   className="bg-gradient-to-br from-[#D5B895] to-[#C0A060] text-white px-8 py-3 rounded-full font-semibold"
                 >
                   Notify When Available
                 </button>
               </div>
             )}
-
-            {/* Additional Info */}
-            <div className="mt-8 pt-8 border-t border-[#D5B895]">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl mb-2">📦</div>
-                  <p className="text-sm font-medium">Free Shipping</p>
-                  <p className="text-xs text-gray-500">On orders over Rs. 2000</p>
-                </div>
-                <div>
-                  <div className="text-2xl mb-2">🔒</div>
-                  <p className="text-sm font-medium">Secure Payment</p>
-                  <p className="text-xs text-gray-500">100% secure</p>
-                </div>
-                <div>
-                  <div className="text-2xl mb-2">↩️</div>
-                  <p className="text-sm font-medium">Easy Returns</p>
-                  <p className="text-xs text-gray-500">30-day return policy</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
